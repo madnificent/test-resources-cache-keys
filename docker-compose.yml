@@ -22,7 +22,7 @@ services:
       - ./data/db:/data
       - ./config/virtuoso/virtuoso.ini:/data/virtuoso.ini
   resource:
-    image: semtech/mu-cl-resources:1.22.2
+    image: semtech/mu-cl-resources:feature-enhanced-cache-keys
     links:
       - database:database
     volumes:
