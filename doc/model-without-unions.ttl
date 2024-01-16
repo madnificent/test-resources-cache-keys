@@ -1,0 +1,117 @@
+@prefix cms: <http://mu.semte.ch/vocabulary/cms/>.
+@prefix dct: <http://purl.org/dc/terms/>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix schema: <http://schema.org/>.
+@prefix ext: <http://mu.semte.ch/vocabularies/ext/>.
+@prefix rm: <http://mu.semte.ch/vocabularies/logical-delete/>.
+@prefix typedLiterals: <http://mu.semte.ch/vocabularies/typed-literals/>.
+@prefix mu: <http://mu.semte.ch/vocabularies/core/>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix app: <http://mu.semte.ch/app/>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix dc: <http://purl.org/dc/elements/1.1/>.
+
+<http://mu.semte.ch/ontology> rdf:type owl:Ontology.
+<http://mu.semte.ch/ontology> dc:title "Generated resource ontology". 
+<http://mu.semte.ch/ontology> dc:description "Generated resource ontology". 
+
+schema:Person rdf:type owl:Class;
+   rdfs:subClassOf foaf:Agent;
+  rdfs:label "person".
+foaf:Agent rdf:type owl:Class;
+   rdfs:subClassOf schema:Thing;
+  rdfs:label "agent".
+schema:Book rdf:type owl:Class;
+   rdfs:subClassOf schema:CreativeWork;
+  rdfs:label "book".
+ext:ColoringBook rdf:type owl:Class;
+   rdfs:subClassOf schema:Book;
+  rdfs:label "coloring-book".
+schema:Thing rdf:type owl:Class;
+  rdfs:label "thing".
+schema:PostalAddress rdf:type owl:Class;
+   rdfs:subClassOf schema:Thing;
+  rdfs:label "address".
+schema:CreativeWork rdf:type owl:Class;
+   rdfs:subClassOf schema:Thing;
+  rdfs:label "creative-work".
+schema:Comment rdf:type owl:Class;
+   rdfs:subClassOf schema:CreativeWork;
+  rdfs:label "comment".
+
+schema:givenName rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:givenName.";
+  rdfs:label "given-name";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:Person.
+schema:familyName rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:familyName.";
+  rdfs:label "family-name";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:Person.
+schema:isbn rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:isbn.";
+  rdfs:label "isbn";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:Book.
+schema:name rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:name.";
+  rdfs:label "name";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:Thing.
+schema:streetAddress rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:streetAddress.";
+  rdfs:label "street-address";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:PostalAddress.
+schema:postalCode rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:postalCode.";
+  rdfs:label "postal-code";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:PostalAddress.
+schema:addressLocality rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is schema:addressLocality.";
+  rdfs:label "locality";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:PostalAddress.
+dct:title rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is string.  Original predicate is dct:title.";
+  rdfs:label "title";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:CreativeWork.
+schema:upvoteCount rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is number.  Original predicate is schema:upvoteCount.";
+  rdfs:label "upvote-count";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:Comment.
+schema:downvoteCount rdf:type owl:DatatypeProperty;
+  rdfs:comment "Resources type is number.  Original predicate is schema:downvoteCount.";
+  rdfs:label "downvote-count";
+  rdfs:range rdfs:Literal;
+  rdfs:domain schema:Comment.
+
+
+schema:author rdf:type owl:ObjectProperty;
+  rdfs:comment "";
+  rdfs:label "author";
+  rdfs:domain schema:CreativeWork;
+  rdfs:range schema:Person.
+schema:address rdf:type owl:ObjectProperty;
+  rdfs:comment "";
+  rdfs:label "address";
+  rdfs:domain schema:Person;
+  rdfs:range schema:PostalAddress.
+ext:local_id_1 rdf:type owl:ObjectProperty;
+  rdfs:comment "Original relationship is schema:comment";
+  rdfs:label "creative-work";
+  rdfs:domain schema:CreativeWork;
+  rdfs:range schema:Comment.
+ext:local_id_2 rdf:type owl:ObjectProperty;
+  rdfs:comment "Original relationship is schema:comment";
+  rdfs:label "comments";
+  rdfs:domain schema:Comment;
+  rdfs:range schema:CreativeWork.
+
+
+

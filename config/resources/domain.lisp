@@ -5,6 +5,7 @@
 (setf sparql:*experimental-no-application-graph-for-sudo-select-queries* t)
 (setf *cache-model-properties-p* t)
 
+
 ;; we want a relationship two steps further and inheritance
 
 (define-resource thing ()
@@ -45,10 +46,9 @@
   :class (s-prefix "schema:CreativeWork")
   :properties `((:title :string ,(s-prefix "dct:title")))
   :has-many `((comment :via ,(s-prefix "schema:comment")
-                       :inverse t
                        :as "comments"))
   :has-one `((person :via ,(s-prefix "schema:author")
-                     :as "person"))
+                     :as "author"))
   :resource-base (s-url "http://resources.services.semantic.works/tests/creative-works/")
   :on-path "creative-works")
 
@@ -57,6 +57,11 @@
   :properties `((:isbn :string ,(s-prefix "schema:isbn")))
   :resource-base (s-url "http://resources.services.semantic.works/tests/books/")
   :on-path "books")
+
+(define-resource coloring-book (book)
+  :class (s-prefix "ext:ColoringBook")
+  :resource-base (s-url "http://resources.services.semantic.works/tests/coloring-books/")
+  :on-path "coloring-books")
 
 (define-resource comment (creative-work)
   :class (s-prefix "schema:Comment")

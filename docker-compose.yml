@@ -7,12 +7,16 @@ services:
       SESSION_COOKIE_SECURE: "on"
     links:
       - dispatcher:dispatcher
+    labels:
+      - logging=true
   dispatcher:
     image: semtech/mu-dispatcher:2.1.0-beta.2
     links:
       - resource:resource
     volumes:
       - ./config/dispatcher:/config
+    labels:
+      - logging=true
   database:
     image: redpencil/virtuoso:1.2.0-rc.1
     environment:
@@ -21,9 +25,15 @@ services:
     volumes:
       - ./data/db:/data
       - ./config/virtuoso/virtuoso.ini:/data/virtuoso.ini
+    labels:
+      - logging=true
   resource:
     image: semtech/mu-cl-resources:feature-enhanced-cache-keys
     links:
       - database:database
     volumes:
       - ./config/resources:/config
+    ports:
+      - 8888:80
+    labels:
+      - logging=true

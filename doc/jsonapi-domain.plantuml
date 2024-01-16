@@ -1,0 +1,34 @@
+@startuml
+set namespaceSeparator none
+class "people"
+"people" : given-name
+"people" : family-name
+"people" --> "1" "addresses" : address > 
+"people" --> "*" "creative-works" : creative-works > 
+"agents" <|-- "people"
+class "agents"
+"things" <|-- "agents"
+class "books"
+"books" : isbn
+"creative-works" <|-- "books"
+class "coloring-books"
+"books" <|-- "coloring-books"
+class "things"
+"things" : name
+class "addresses"
+"addresses" : street-address
+"addresses" : postal-code
+"addresses" : locality
+"addresses" --> "*" "people" : persons > 
+"things" <|-- "addresses"
+class "creative-works"
+"creative-works" : title
+"creative-works" --> "1" "people" : author > 
+"creative-works" --> "*" "comments" : comments > 
+"things" <|-- "creative-works"
+class "comments"
+"comments" : upvote-count
+"comments" : downvote-count
+"comments" --> "1" "creative-works" : creative-work > 
+"creative-works" <|-- "comments"
+@enduml

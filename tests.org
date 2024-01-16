@@ -1,0 +1,1124 @@
+# -*- org-confirm-babel-evaluate: nil -*-
+#+TITLE: Manual tests for mu-cl-resources cache keys
+
+* Tests
+
+** Support
+   #+name: get
+   #+begin_src restclient :var resource="people"
+     GET http://localhost:8888/:resource
+     Accept: application/vnd.api+json
+     -> run-hook (progn (goto-char (point-min)) (search-forward "Cache-Keys: ") (delete-region (point-min) (point)) (delete-region (line-end-position) (point-max)))
+   #+end_src
+
+   #+name: post
+   #+begin_src restclient :var resource="people" :var body="{}"
+     POST http://localhost:8888/:resource
+     Accept: application/vnd.api+json
+     Content-Type: application/vnd.api+json
+
+     :body
+
+     -> run-hook (progn (goto-char (point-min)) (search-forward "Clear-Keys: ") (delete-region (point-min) (point)) (delete-region (line-end-position) (point-max)))
+   #+end_src
+
+   #+begin_src elisp
+     (defun restclient-keep-response-header (header)
+       (goto-char (point-min))
+       (search-forward (concat header ": "))
+       (delete-region (point-min) (point))
+       (delete-region (line-end-position) (point-max))
+       (json-pretty-print-buffer))
+   #+end_src
+
+   #+RESULTS:
+   : restclient-keep-response-header
+
+** Ensuring links are known
+   #+call: get("things")
+
+   #+RESULTS:
+   #+BEGIN_SRC js
+   [{"ld-resource":"http://schema.org/Thing"}]
+   #+END_SRC
+
+** Creating instances
+   #+begin_src restclient :var resource="people" :var body="{}"
+     POST http://localhost:8888/people
+     Accept: application/vnd.api+json
+     Content-Type: application/vnd.api+json
+     -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+     {
+       "data": {
+         "type": "people",
+         "attributes": {
+           "given-name": "Erika",
+           "family-name": "Pauwels"
+         }
+       }
+     }
+   #+end_src
+
+   #+RESULTS:
+   #+BEGIN_SRC js
+   [{"ld-resource":"http://xmlns.com/foaf/0.1/Agent"},{"ld-resource":"http://schema.org/Thing"},{"ld-resource":"http://schema.org/Person"}]
+   #+END_SRC
+
+   This is correct!
+
+** Do we find Erika?
+   
+*** As a person
+    #+begin_src restclient
+      GET http://localhost:8888/people
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    {
+      "data": [
+        {
+          "id": "65846202CE8BB1E223797C36",
+          "type": "people",
+          "attributes": {
+            "given-name": "Erika",
+            "family-name": "Pauwels"
+          },
+          "relationships": {
+            "creative-works": {
+              "links": {
+                "self": "/people/65846202CE8BB1E223797C36/links/creative-works",
+                "related": "/people/65846202CE8BB1E223797C36/creative-works"
+              }
+            },
+            "address": {
+              "links": {
+                "self": "/people/65846202CE8BB1E223797C36/links/address",
+                "related": "/people/65846202CE8BB1E223797C36/address"
+              }
+            }
+          }
+        }
+      ],
+      "links": {
+        "first": "/people",
+        "last": "/people",
+        "self": "people"
+      },
+      "meta": {
+        "count": 1
+      }
+    }
+    // GET http://localhost:8888/people
+    // HTTP/1.1 200 OK
+    // Content-Length: 501
+    // Date: Thu, 21 Dec 2023 16:06:47 GMT
+    // Server: Hunchentoot 1.3.0
+    // Keep-Alive: timeout=20
+    // Connection: Keep-Alive
+    // Cache-Keys: [{"uri":"http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"},{"ld-resource":"http://schema.org/Person"}]
+    // Content-Type: application/json
+    // Request duration: 0.021530s
+    #+END_SRC
+
+    This is correct.
+
+*** As a thing
+    #+begin_src restclient
+      GET http://localhost:8888/things
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    {
+      "data": [
+        {
+          "id": "65846202CE8BB1E223797C36",
+          "type": "people",
+          "attributes": {
+            "given-name": "Erika",
+            "family-name": "Pauwels"
+          },
+          "relationships": {
+            "creative-works": {
+              "links": {
+                "self": "/people/65846202CE8BB1E223797C36/links/creative-works",
+                "related": "/people/65846202CE8BB1E223797C36/creative-works"
+              }
+            },
+            "address": {
+              "links": {
+                "self": "/people/65846202CE8BB1E223797C36/links/address",
+                "related": "/people/65846202CE8BB1E223797C36/address"
+              }
+            }
+          }
+        }
+      ],
+      "links": {
+        "first": "/things",
+        "last": "/things",
+        "self": "things"
+      },
+      "meta": {
+        "count": 1
+      }
+    }
+    // GET http://localhost:8888/things
+    // HTTP/1.1 200 OK
+    // Content-Length: 501
+    // Date: Thu, 21 Dec 2023 16:07:26 GMT
+    // Server: Hunchentoot 1.3.0
+    // Keep-Alive: timeout=20
+    // Connection: Keep-Alive
+    // Cache-Keys: [{"uri":"http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"},{"ld-resource":"http://schema.org/Thing"}]
+    // Content-Type: application/json
+    // Request duration: 0.019269s
+    #+END_SRC
+    
+*** As an individual
+    #+begin_src restclient
+      GET http://localhost:8888/people/65846202CE8BB1E223797C36
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    {
+      "data": {
+        "attributes": {
+          "given-name": "Erika",
+          "family-name": "Pauwels"
+        },
+        "id": "65846202CE8BB1E223797C36",
+        "type": "people",
+        "relationships": {
+          "creative-works": {
+            "links": {
+              "self": "/people/65846202CE8BB1E223797C36/links/creative-works",
+              "related": "/people/65846202CE8BB1E223797C36/creative-works"
+            }
+          },
+          "address": {
+            "links": {
+              "self": "/people/65846202CE8BB1E223797C36/links/address",
+              "related": "/people/65846202CE8BB1E223797C36/address"
+            }
+          }
+        }
+      },
+      "links": {
+        "self": "/people/65846202CE8BB1E223797C36"
+      }
+    }
+    // GET http://localhost:8888/people/65846202CE8BB1E223797C36
+    // HTTP/1.1 200 OK
+    // Content-Length: 471
+    // Date: Thu, 21 Dec 2023 16:08:32 GMT
+    // Server: Hunchentoot 1.3.0
+    // Keep-Alive: timeout=20
+    // Connection: Keep-Alive
+    // Cache-Keys: [{"uri":"http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"}]
+    // Content-Type: application/json
+    // Request duration: 0.003702s
+    #+END_SRC
+
+    #+begin_src restclient
+      GET http://localhost:8888/things/65846202CE8BB1E223797C36
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    {
+      "data": {
+        "attributes": {
+          "given-name": "Erika",
+          "family-name": "Pauwels"
+        },
+        "id": "65846202CE8BB1E223797C36",
+        "type": "people",
+        "relationships": {
+          "creative-works": {
+            "links": {
+              "self": "/people/65846202CE8BB1E223797C36/links/creative-works",
+              "related": "/people/65846202CE8BB1E223797C36/creative-works"
+            }
+          },
+          "address": {
+            "links": {
+              "self": "/people/65846202CE8BB1E223797C36/links/address",
+              "related": "/people/65846202CE8BB1E223797C36/address"
+            }
+          }
+        }
+      },
+      "links": {
+        "self": "/people/65846202CE8BB1E223797C36"
+      }
+    }
+    // GET http://localhost:8888/things/65846202CE8BB1E223797C36
+    // HTTP/1.1 200 OK
+    // Content-Length: 471
+    // Date: Thu, 21 Dec 2023 16:08:43 GMT
+    // Server: Hunchentoot 1.3.0
+    // Keep-Alive: timeout=20
+    // Connection: Keep-Alive
+    // Cache-Keys: [{"uri":"http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"}]
+    // Content-Type: application/json
+    // Request duration: 0.003586s
+    #+END_SRC
+
+    #+begin_src restclient
+      GET http://localhost:8888/agents/65846202CE8BB1E223797C36
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    {
+      "data": {
+        "attributes": {
+          "given-name": "Erika",
+          "family-name": "Pauwels"
+        },
+        "id": "65846202CE8BB1E223797C36",
+        "type": "people",
+        "relationships": {
+          "creative-works": {
+            "links": {
+              "self": "/people/65846202CE8BB1E223797C36/links/creative-works",
+              "related": "/people/65846202CE8BB1E223797C36/creative-works"
+            }
+          },
+          "address": {
+            "links": {
+              "self": "/people/65846202CE8BB1E223797C36/links/address",
+              "related": "/people/65846202CE8BB1E223797C36/address"
+            }
+          }
+        }
+      },
+      "links": {
+        "self": "/people/65846202CE8BB1E223797C36"
+      }
+    }
+    // GET http://localhost:8888/agents/65846202CE8BB1E223797C36
+    // HTTP/1.1 200 OK
+    // Content-Length: 471
+    // Date: Thu, 21 Dec 2023 16:08:50 GMT
+    // Server: Hunchentoot 1.3.0
+    // Keep-Alive: timeout=20
+    // Connection: Keep-Alive
+    // Cache-Keys: [{"uri":"http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"}]
+    // Content-Type: application/json
+    // Request duration: 0.003340s
+    #+END_SRC
+
+** She has written a book!
+*** Create the book
+    #+begin_src restclient
+      POST http://localhost:8888/books
+      Accept: application/vnd.api+json
+      Content-Type: application/vnd.api+json
+      -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+      {
+        "data": {
+          "type": "books",
+          "attributes": {
+            "title": "Linked Data for Dummies",
+            "isbn": "42"
+          },
+          "relationships": {
+            "author": {
+              "data": {
+                "type": "people",
+                "id": "65846202CE8BB1E223797C36"
+              }
+            }
+          }
+        }
+      }
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+      [
+        {
+          "ld-resource": "http://schema.org/CreativeWork",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/Person",
+          "ld-relation": "^<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/Thing"
+        },
+        {
+          "ld-resource": "http://schema.org/Book",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/CreativeWork"
+        },
+        {
+          "ld-resource": "http://schema.org/Book"
+        }
+      ]
+    #+END_SRC
+*** Create a coloring book too!
+
+    #+begin_src restclient
+      POST http://localhost:8888/coloring-books
+      Accept: application/vnd.api+json
+      Content-Type: application/vnd.api+json
+      -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+      {
+        "data": {
+          "type": "coloring-books",
+          "attributes": {
+            "title": "Coloring dragons",
+            "isbn": "1337"
+          },
+          "relationships": {
+            "author": {
+              "data": {
+                "type": "people",
+                "id": "65846202CE8BB1E223797C36"
+              }
+            }
+          }
+        }
+      }
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+      [
+        {
+          "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook"
+        },
+        {
+          "ld-resource": "http://schema.org/CreativeWork",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/Person",
+          "ld-relation": "^<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/Thing"
+        },
+        {
+          "ld-resource": "http://schema.org/Book",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/CreativeWork"
+        },
+        {
+          "ld-resource": "http://schema.org/Book"
+        }
+      ]
+    #+END_SRC
+** How about people and their books?
+   #+begin_src restclient
+     GET http://localhost:8888/people?include=creative-works
+     Accept: application/vnd.api+json
+     -> run-hook (restclient-keep-response-header "Cache-Keys")
+   #+end_src
+
+   #+RESULTS:
+   #+BEGIN_SRC js
+     [
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/65846BB9E1D6D419E17EB288"
+       },
+       {
+         "ld-resource": "http://schema.org/Person"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/65846B443B68A8598D64008C"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/65846BF2E1D6D419E17EB289"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/65846C63E1D6D419E17EB28A"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/coloring-books/65846C99E1D6D419E17EB28B"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/65846B5F3B68A8598D64008D"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/658466D83B68A8598D64008B"
+       }
+     ]
+   #+END_SRC
+
+   #+begin_src restclient
+     GET http://localhost:8888/creative-works?include=author
+     Accept: application/vnd.api+json
+     -> run-hook (restclient-keep-response-header "Cache-Keys")
+   #+end_src
+
+   #+RESULTS:
+   #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"
+       },
+       {
+         "ld-resource": "http://schema.org/CreativeWork"
+       }
+     ]
+   #+END_SRC
+
+   #+begin_src restclient
+     GET http://localhost:8888/books?include=author
+     Accept: application/vnd.api+json
+     -> run-hook (restclient-keep-response-header "Cache-Keys")
+   #+end_src
+
+   #+RESULTS:
+   #+BEGIN_SRC js
+   [{"uri":"http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"},{"ld-resource":"http://schema.org/Book","ld-relation":"<http://schema.org/author>"},{"ld-resource":"http://schema.org/Book"}]
+   #+END_SRC
+** Patch attribute
+*** Create a book to hack on
+
+     #+begin_src restclient
+       POST http://localhost:8888/books
+       Accept: application/vnd.api+json
+       Content-Type: application/vnd.api+json
+
+       {
+         "data": {
+           "type": "books",
+           "attributes": {
+             "title": "How to make coffee in 10 days",
+             "isbn": "10-7249"
+           },
+           "relationships": {
+             "author": {
+               "data": {
+                 "type": "people",
+                 "id": "65846202CE8BB1E223797C36"
+               }
+             }
+           }
+         }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     {
+       "data": {
+         "attributes": {
+           "isbn": "10-7249",
+           "title": "How to make coffee in 10 days"
+         },
+         "id": "6585896593959E1661AF5960",
+         "type": "books",
+         "relationships": {
+           "comments": {
+             "links": {
+               "self": "/books/6585896593959E1661AF5960/links/comments",
+               "related": "/books/6585896593959E1661AF5960/comments"
+             }
+           },
+           "author": {
+             "links": {
+               "self": "/books/6585896593959E1661AF5960/links/author",
+               "related": "/books/6585896593959E1661AF5960/author"
+             }
+           }
+         }
+       }
+     }
+     // POST http://localhost:8888/books
+     // HTTP/1.1 201 Created
+     // Content-Length: 405
+     // Date: Fri, 22 Dec 2023 13:04:37 GMT
+     // Server: Hunchentoot 1.3.0
+     // Keep-Alive: timeout=20
+     // Connection: Keep-Alive
+     // Clear-Keys: [{"ld-resource":"http://schema.org/CreativeWork","ld-relation":"<http://schema.org/author>"},{"ld-resource":"http://schema.org/Person","ld-relation":"^<http://schema.org/author>"},{"ld-resource":"http://schema.org/Thing"},{"ld-resource":"http://schema.org/Book","ld-relation":"<http://schema.org/author>"},{"ld-resource":"http://schema.org/CreativeWork"},{"ld-resource":"http://schema.org/Book"}]
+     // Location: /books/6585896593959E1661AF5960
+     // Content-Type: application/json
+     // Request duration: 0.086502s
+     #+END_SRC
+*** Update a property
+
+     #+begin_src restclient :var uuid="6585896593959E1661AF5960"
+       PATCH http://localhost:8888/books/:uuid
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": {
+             "attributes": {
+               "title": "How to make coffee in 1 day"
+             },
+             "type": "books",
+             "id": ":uuid"
+          }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [{"uri":"http://resources.services.semantic.works/tests/books/6585896593959E1661AF5960"},{"ld-resource":"http://schema.org/Thing"},{"ld-resource":"http://schema.org/CreativeWork"},{"ld-resource":"http://schema.org/Book"}]
+     #+END_SRC
+    
+** Patch relation
+*** Remove the author
+     #+begin_src restclient :var uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       PATCH http://localhost:8888/books/:uuid
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": {
+             "relationships": {
+               "author": {
+                 "data": null
+               }
+             },
+             "type": "books",
+             "id": ":uuid"
+          }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+       [
+         {
+           "ld-resource": "http://schema.org/CreativeWork",
+           "ld-relation": "<http://schema.org/author>"
+         },
+         {
+           "ld-resource": "http://schema.org/Person",
+           "ld-relation": "^<http://schema.org/author>"
+         },
+         {
+           "uri": "http://resources.services.semantic.works/tests/books/6585896593959E1661AF5960"
+         },
+         {
+           "ld-resource": "http://schema.org/Thing"
+         },
+         {
+           "ld-resource": "http://schema.org/Book",
+           "ld-relation": "<http://schema.org/author>"
+         },
+         {
+           "ld-resource": "http://schema.org/CreativeWork"
+         },
+         {
+           "ld-resource": "http://schema.org/Book"
+         }
+       ]
+     #+END_SRC
+
+     Same for creative-works
+
+     #+begin_src restclient :var book_uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       PATCH http://localhost:8888/creative-works/:book_uuid
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": {
+             "relationships": {
+               "author": {
+                 "data": null
+               }
+             },
+             "type": "creative-works",
+             "id": ":book_uuid"
+          }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/books/6585896593959E1661AF5960"
+       },
+       {
+         "ld-resource": "http://schema.org/Thing"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/CreativeWork"
+       },
+       {
+         "ld-resource": "http://schema.org/Book"
+       }
+     ]
+     #+END_SRC
+
+*** Set the books for the given author
+    This must also clear what we have removed.  We don't know what we
+    have removed, so this includes extra subclasses.
+
+     #+begin_src restclient :var book_uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       PATCH http://localhost:8888/people/:author_uuid
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": {
+             "relationships": {
+               "creative-works": {
+                 "data": [{
+                   "type": "books",
+                   "id": ":book_uuid"
+                 }]
+               }
+             },
+             "type": "people",
+             "id": ":author_uuid"
+          }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/Comment",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person"
+       },
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "uri": "http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"
+       },
+       {
+         "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://xmlns.com/foaf/0.1/Agent"
+       },
+       {
+         "ld-resource": "http://schema.org/Thing"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       }
+     ]
+     #+END_SRC
+
+** Delete entity
+
+*** Create it
+      #+begin_src restclient
+        POST http://localhost:8888/books
+        Accept: application/vnd.api+json
+        Content-Type: application/vnd.api+json
+
+        {
+          "data": {
+            "type": "books",
+            "attributes": {
+              "title": "Could java be awesome?",
+              "isbn": "0918273409182"
+            },
+            "relationships": {
+              "author": {
+                "data": {
+                  "type": "people",
+                  "id": "65846202CE8BB1E223797C36"
+                }
+              }
+            }
+          }
+        }
+      #+end_src
+
+      #+RESULTS:
+      #+BEGIN_SRC js
+      {
+        "data": {
+          "attributes": {
+            "isbn": "0918273409182",
+            "title": "Could java be awesome?"
+          },
+          "id": "6585A6164AE95DDACD9CF31B",
+          "type": "books",
+          "relationships": {
+            "comments": {
+              "links": {
+                "self": "/books/6585A6164AE95DDACD9CF31B/links/comments",
+                "related": "/books/6585A6164AE95DDACD9CF31B/comments"
+              }
+            },
+            "author": {
+              "links": {
+                "self": "/books/6585A6164AE95DDACD9CF31B/links/author",
+                "related": "/books/6585A6164AE95DDACD9CF31B/author"
+              }
+            }
+          }
+        }
+      }
+      // POST http://localhost:8888/books
+      // HTTP/1.1 201 Created
+      // Content-Length: 404
+      // Date: Fri, 22 Dec 2023 15:07:02 GMT
+      // Server: Hunchentoot 1.3.0
+      // Keep-Alive: timeout=20
+      // Connection: Keep-Alive
+      // Clear-Keys: [{"ld-resource":"http://schema.org/CreativeWork","ld-relation":"<http://schema.org/author>"},{"ld-resource":"http://schema.org/Person","ld-relation":"^<http://schema.org/author>"},{"ld-resource":"http://schema.org/Thing"},{"ld-resource":"http://schema.org/Book","ld-relation":"<http://schema.org/author>"},{"ld-resource":"http://schema.org/CreativeWork"},{"ld-resource":"http://schema.org/Book"}]
+      // Location: /books/6585A6164AE95DDACD9CF31B
+      // Content-Type: application/json
+      // Request duration: 0.024415s
+      #+END_SRC
+   
+      #+begin_src restclient :var uuid="6585A6164AE95DDACD9CF31B"
+        DELETE http://localhost:8888/books/:uuid
+        Accept: application/vnd.api+json
+        -> run-hook (restclient-keep-response-header "Clear-Keys")
+      #+end_src
+
+      #+RESULTS:
+      #+BEGIN_SRC js
+      [
+        {
+          "ld-resource": "http://schema.org/Book",
+          "ld-relation": "<http://schema.org/comment>"
+        },
+        {
+          "ld-resource": "http://schema.org/CreativeWork",
+          "ld-relation": "<http://schema.org/comment>"
+        },
+        {
+          "ld-resource": "http://schema.org/CreativeWork",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/Person",
+          "ld-relation": "^<http://schema.org/author>"
+        },
+        {
+          "ld-resource": "http://schema.org/Comment",
+          "ld-relation": "^<http://schema.org/comment>"
+        },
+        {
+          "ld-resource": "http://schema.org/Thing"
+        },
+        {
+          "ld-resource": "http://schema.org/Book",
+          "ld-relation": "<http://schema.org/author>"
+        },
+        {
+          "uri": "http://resources.services.semantic.works/tests/books/6585A6164AE95DDACD9CF31B"
+        },
+        {
+          "ld-resource": "http://schema.org/CreativeWork"
+        },
+        {
+          "ld-resource": "http://schema.org/Book"
+        }
+      ]
+      #+END_SRC
+
+
+** TODO Relations
+   
+*** Get the books of author
+     #+begin_src restclient :var book_uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       GET http://localhost:8888/people/:author_uuid/creative-works
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Cache-Keys")
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/CreativeWork"
+       }
+     ]
+     #+END_SRC
+
+*** Get the author of a book
+     #+begin_src restclient :var book_uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       GET http://localhost:8888/books/:book_uuid/author
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Cache-Keys")    
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "uri": "http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       }
+     ]
+     #+END_SRC
+
+*** Set the book of author
+     #+begin_src restclient :var book_uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       PATCH http://localhost:8888/people/:author_uuid/links/creative-works
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": [{
+            "type": "books",
+            "id": ":book_uuid"
+          }]
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/Comment",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       }
+     ]
+     #+END_SRC
+
+*** Set the author of book
+     #+begin_src restclient :var book_uuid="6585896593959E1661AF5960" :var author_uuid="65846202CE8BB1E223797C36"
+       PATCH http://localhost:8888/books/:book_uuid/links/author
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": {
+            "type": "people",
+            "id": ":author_uuid"
+          }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       }
+     ]
+     #+END_SRC
+
+
+*** Set the author of a coloring book
+    #+begin_src restclient
+      GET http://localhost:8080/coloring-books
+      Accept: application/vnd.api+json
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    {
+      "data": [
+        {
+          "id": "65846C99E1D6D419E17EB28B",
+          "type": "coloring-books",
+          "attributes": {
+            "isbn": "1337",
+            "title": "Coloring dragons"
+          },
+          "relationships": {
+            "comments": {
+              "links": {
+                "self": "/coloring-books/65846C99E1D6D419E17EB28B/links/comments",
+                "related": "/coloring-books/65846C99E1D6D419E17EB28B/comments"
+              }
+            },
+            "author": {
+              "links": {
+                "self": "/coloring-books/65846C99E1D6D419E17EB28B/links/author",
+                "related": "/coloring-books/65846C99E1D6D419E17EB28B/author"
+              }
+            }
+          }
+        }
+      ],
+      "links": {
+        "first": "/coloring-books",
+        "last": "/coloring-books",
+        "self": "coloring-books"
+      },
+      "meta": {
+        "count": 1
+      }
+    }
+    // GET http://localhost:8080/coloring-books
+    // HTTP/1.1 200 OK
+    // Content-Length: 540
+    // Date: Fri, 22 Dec 2023 15:22:18 GMT
+    // Server: Hunchentoot 1.3.0
+    // Keep-Alive: timeout=20
+    // Connection: Keep-Alive
+    // Cache-Keys: [{"ld-resource":"http://mu.semte.ch/vocabularies/ext/ColoringBook"}]
+    // Content-Type: application/json
+    // Request duration: 0.021386s
+    #+END_SRC
+
+     #+begin_src restclient :var coloring_book_uuid="65846C99E1D6D419E17EB28B" :var author_uuid="65846202CE8BB1E223797C36"
+       PATCH http://localhost:8888/books/:coloring_book_uuid/links/author
+       Content-Type: application/vnd.api+json
+       Accept: application/vnd.api+json
+       -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+       {
+          "data": {
+            "type": "people",
+            "id": ":author_uuid"
+          }
+       }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       }
+     ]
+     #+END_SRC
+
+*** Delete the book from author
+    We also have a clear key for =Comment= here which is chosen to keep
+    the code a bit less complex.  This is suboptimal but the call is
+    rarely used.  Better to optimize other cases than this :-)
+    
+      #+begin_src restclient :var coloring_book_uuid="65846C99E1D6D419E17EB28B" :var author_uuid="65846202CE8BB1E223797C36"
+        DELETE http://localhost:8888/people/:author_uuid/links/creative-works
+        Accept: application/vnd.api+json
+        Content-Type: application/vnd.api+json
+        -> run-hook (restclient-keep-response-header "Clear-Keys")
+
+        {
+           "data": [{
+             "type": "books",
+             "id": ":coloring_book_uuid"
+           }]
+        }
+     #+end_src
+
+     #+RESULTS:
+     #+BEGIN_SRC js
+     [
+       {
+         "ld-resource": "http://schema.org/Comment",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/CreativeWork",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Person",
+         "ld-relation": "^<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook",
+         "ld-relation": "<http://schema.org/author>"
+       },
+       {
+         "ld-resource": "http://schema.org/Book",
+         "ld-relation": "<http://schema.org/author>"
+       }
+     ]
+     #+END_SRC
