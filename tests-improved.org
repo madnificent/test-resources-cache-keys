@@ -717,7 +717,6 @@
     ]
     #+END_SRC
 
-
 ** Relations
    
 *** Get the books of author
@@ -836,7 +835,6 @@
      ]
      #+END_SRC
 
-
 *** Set the author of a coloring book
     #+name: coloring-book-uuid
     #+begin_src restclient :cache yes
@@ -931,3 +929,70 @@
        }
      ]
      #+END_SRC
+
+** Included relationships
+*** Books with authors
+    #+begin_src restclient
+      GET :host/books?include=author
+      Content-Type: application/vnd.api+json
+      Accept: application/vnd.api+json
+      -> run-hook (restclient-keep-response-header "Cache-Keys")
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    [
+      {
+        "ld-relation": "<http://mu.semte.ch/vocabularies/ext/artist>",
+        "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook"
+      },
+      {
+        "ld-relation": "<http://schema.org/author>",
+        "ld-resource": "http://schema.org/Book"
+      },
+      {
+        "ld-resource": "http://schema.org/Book"
+      },
+      {
+        "uri": "http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"
+      },
+      {
+        "uri": "http://resources.services.semantic.works/tests/people/65883D2BC48FABC418E9B76F"
+      }
+    ]
+    #+END_SRC
+
+*** Books with authors and their books
+    #+begin_src restclient
+      GET :host/books?include=author.creative-works
+      Content-Type: application/vnd.api+json
+      Accept: application/vnd.api+json
+      -> run-hook (restclient-keep-response-header "Cache-Keys")
+    #+end_src
+
+    #+RESULTS:
+    #+BEGIN_SRC js
+    [
+      {
+        "ld-relation": "<http://mu.semte.ch/vocabularies/ext/artist>",
+        "ld-resource": "http://mu.semte.ch/vocabularies/ext/ColoringBook"
+      },
+      {
+        "ld-relation": "<http://schema.org/author>",
+        "ld-resource": "http://schema.org/Book"
+      },
+      {
+        "ld-relation": "^<http://schema.org/author>",
+        "ld-resource": "http://schema.org/Person"
+      },
+      {
+        "ld-resource": "http://schema.org/Book"
+      },
+      {
+        "uri": "http://resources.services.semantic.works/tests/people/65846202CE8BB1E223797C36"
+      },
+      {
+        "uri": "http://resources.services.semantic.works/tests/people/65883D2BC48FABC418E9B76F"
+      }
+    ]
+    #+END_SRC

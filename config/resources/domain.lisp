@@ -61,6 +61,8 @@
 (define-resource coloring-book (book)
   :class (s-prefix "ext:ColoringBook")
   :resource-base (s-url "http://resources.services.semantic.works/tests/coloring-books/")
+  :has-one `((person :via ,(s-prefix "ext:artist")
+                     :as "author"))
   :on-path "coloring-books")
 
 (define-resource comment (creative-work)
